@@ -264,7 +264,7 @@ public final class CarsXE {
     /// Search by year, make, model
     /// Required: year, make, model
     /// Optional: trim
-    public func ymm(_ params: [String: String]) async throws -> [String: Any] {
+    public func yearMakeModel(_ params: [String: String]) async throws -> [String: Any] {
         try validateParams(params, for: APIEndpoints.yearMakeModel)
         let url = try buildURL(endpoint: "v1/ymm", params: params)
         return try await performGET(url: url)
