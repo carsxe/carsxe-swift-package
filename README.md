@@ -1,7 +1,7 @@
 # 🚗 CarsXE API (Swift Package)
 
-[![Swift Version](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)  
-[![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20tvOS%20%7C%20watchOS-lightgrey.svg)](https://github.com/carsxe/carsxe-swift-package)  
+[![Swift Version](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
+[![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20tvOS%20%7C%20watchOS-lightgrey.svg)](https://github.com/carsxe/carsxe-swift-package)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **CarsXE** is a powerful and developer-friendly API that gives you instant access to a wide range of vehicle data. From VIN decoding and market value estimation to vehicle history, images, OBD code explanations, and plate recognition, CarsXE provides everything you need to build automotive applications at scale.
