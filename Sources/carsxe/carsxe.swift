@@ -1,80 +1,53 @@
 import Foundation
+#if canImport(FoundationNetworking)
 import FoundationNetworking
+#endif
 
-/// Lightweight CarsXE client where every endpoint accepts params as [String: String].
-/// Returns [String: Any] objects representing JSON responses directly.
+/// Lightweight CarsXE client (Swift version of the Java template).
+/// - API: https://api.carsxe.com
+/// - Public methods are synchronous and throw on error, returning `[String: Any]`.
 public final class CarsXE {
     private let apiKey: String
-    private let session: URLSession
     private let sourceName = "swift"
+    private let session: URLSession
 
     public init(apiKey: String, session: URLSession = .shared) {
         self.apiKey = apiKey
         self.session = session
     }
 
+    // MARK: - Public helpers
+
+    public func getBaseUrl() -> String { "https://api.carsxe.com" }
     public func getApiKey() -> String { apiKey }
-    public func getApiBaseUrl() -> String { "https://api.carsxe.com" }
 
-    // MARK: - Parameter Validation
+    // MARK: - Errors
 
-    /// Validates parameters against endpoint requirements
-    /// Throws CarsXEError.missingRequiredParameter if any required param is missing or empty
-    private func validateParams(_ params: [String: String], for endpoint: EndpointParams) throws {
-        for requiredParam in endpoint.required {
-            let value = params[requiredParam]?.trimmingCharacters(in: .whitespacesAndNewlines)
-            if value?.isEmpty != false {
-                throw CarsXEError.missingRequiredParameter(requiredParam)
+    public enum CarsXEError: Error, CustomStringConvertible {
+        case invalidURL
+        case networkError(Error)
+        case httpError(statusCode: Int, data: Data?)
+        case jsonDecodingError(Error)
+        case missingRequiredParameter(String)
+
+        public var description: String {
+            switch self {
+            case .invalidURL: return "Invalid URL"
+            case .networkError(let e): return "Network error: \(e)"
+            case .httpError(let code, _): return "HTTP error: status code \(code)"
+            case .jsonDecodingError(let e): return "JSON decoding error: \(e)"
+            case .missingRequiredParameter(let param): return "Missing required parameter: \(param)"
             }
         }
     }
 
-    /// Special validation for plate decoder with country-specific logic
-    private func validatePlateDecoderParams(_ params: [String: String]) throws {
-        // First validate basic required params
-        try validateParams(params, for: APIEndpoints.plateDecoder)
-        
-        let country = (params["country"] ?? "US").trimmingCharacters(in: .whitespacesAndNewlines)
-        let countryLower = country.lowercased()
-        
-        // Special case for Pakistan: require both state and district
-        if countryLower == "pk" || countryLower == "pakistan" {
-            let state = params["state"]?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let district = params["district"]?.trimmingCharacters(in: .whitespacesAndNewlines)
-            
-            if state?.isEmpty != false {
-                throw CarsXEError.missingRequiredParameter("state (required for Pakistan)")
-            }
-            if district?.isEmpty != false {
-                throw CarsXEError.missingRequiredParameter("district (required for Pakistan)")
-            }
-        } else {
-            // For other countries, only state is required
-            let state = params["state"]?.trimmingCharacters(in: .whitespacesAndNewlines)
-            if state?.isEmpty != false {
-                throw CarsXEError.missingRequiredParameter("state")
-            }
-        }
-    }
-
-    /// Special validation for image upload endpoints
-    private func validateImageUploadParams(_ params: [String: String]) throws {
-        // Check for upload_url, image, or imageUrl keys
-        let uploadUrl = params["upload_url"]?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let image = params["image"]?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let imageUrl = params["imageUrl"]?.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        if uploadUrl?.isEmpty != false && image?.isEmpty != false && imageUrl?.isEmpty != false {
-            throw CarsXEError.missingRequiredParameter("upload_url (or image/imageUrl)")
-        }
-    }
-
-    // MARK: - URL Building and Network Helpers
+    // MARK: - URL Building
 
     private func buildURL(endpoint: String, params: [String: String]) throws -> URL {
-        guard var comps = URLComponents(string: "\(getApiBaseUrl())/\(endpoint)") else {
+        guard var comps = URLComponents(string: "\(getBaseUrl())/\(endpoint)") else {
             throw CarsXEError.invalidURL
         }
+
         var items: [URLQueryItem] = []
         for (k, v) in params {
             items.append(URLQueryItem(name: k, value: v))
@@ -83,11 +56,101 @@ public final class CarsXE {
         items.append(URLQueryItem(name: "key", value: getApiKey()))
         items.append(URLQueryItem(name: "source", value: sourceName))
         comps.queryItems = items
+
         guard let url = comps.url else { throw CarsXEError.invalidURL }
         return url
     }
 
-    /// Parse JSON response data into [String: Any] object
+    // MARK: - Networking (synchronous wrappers)
+
+    /// Synchronously perform a GET request and return JSON as [String: Any].
+    private func fetch(url: URL) throws -> [String: Any] {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        let (data, response, error) = synchronousDataTask(with: request)
+
+        if let err = error {
+            throw CarsXEError.networkError(err)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw CarsXEError.networkError(NSError(domain: "CarsXE", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
+        }
+
+        guard (200...299).contains(http.statusCode) else {
+            throw CarsXEError.httpError(statusCode: http.statusCode, data: data)
+        }
+
+        guard let data = data else {
+            return [:]
+        }
+
+        return try parseJSONObject(from: data)
+    }
+
+    /// Synchronously perform a POST with JSON body and return JSON as [String: Any].
+    private func post(url: URL, jsonBody: [String: Any], headers: [String: String] = [:]) throws -> [String: Any] {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        for (k, v) in headers {
+            request.setValue(v, forHTTPHeaderField: k)
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: jsonBody, options: [])
+
+        let (data, response, error) = synchronousDataTask(with: request)
+
+        if let err = error {
+            throw CarsXEError.networkError(err)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw CarsXEError.networkError(NSError(domain: "CarsXE", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
+        }
+
+        guard (200...299).contains(http.statusCode) else {
+            throw CarsXEError.httpError(statusCode: http.statusCode, data: data)
+        }
+
+        guard let data = data else {
+            return [:]
+        }
+
+        return try parseJSONObject(from: data)
+    }
+
+    /// Helper to synchronously run a URLSession dataTask.
+    /// Uses reference-type holders to avoid mutating captured local variables in the closure
+    /// (fixes Swift 6 "mutation of captured var in concurrently-executing code" diagnostics).
+    /// Returns (Data?, URLResponse?, Error?)
+    private func synchronousDataTask(with request: URLRequest) -> (Data?, URLResponse?, Error?) {
+        // Reference-type holders — mutation of properties is allowed even in Swift 6 concurrency mode.
+        final class Box<T> { var value: T?; init(_ v: T? = nil) { value = v } }
+
+        let sem = DispatchSemaphore(value: 0)
+        let responseDataBox = Box<Data>()            // Box<Data>.value is Data? (single optional)
+        let responseBox = Box<URLResponse>()        // Box<URLResponse>.value is URLResponse?
+        let errorBox = Box<Error>()                 // Box<Error>.value is Error?
+
+        let task = session.dataTask(with: request) { data, response, error in
+            responseDataBox.value = data
+            responseBox.value = response
+            errorBox.value = error
+            sem.signal()
+        }
+        task.resume()
+
+        // Wait (caller must avoid using on main thread for UI apps)
+        _ = sem.wait(timeout: .distantFuture)
+
+        return (responseDataBox.value, responseBox.value, errorBox.value)
+    }
+
+    // MARK: - JSON Parsing
+
     private func parseJSONObject(from data: Data) throws -> [String: Any] {
         do {
             let obj = try JSONSerialization.jsonObject(with: data, options: [])
@@ -105,168 +168,101 @@ public final class CarsXE {
         }
     }
 
-    private func performGET(url: URL) async throws -> [String: Any] {
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        do {
-            let (data, response) = try await session.data(for: req)
-            guard let http = response as? HTTPURLResponse else {
-                throw CarsXEError.networkError(NSError(domain: "CarsXE", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
-            }
-            guard (200...299).contains(http.statusCode) else {
-                throw CarsXEError.httpError(statusCode: http.statusCode, data: data)
-            }
-            return try parseJSONObject(from: data)
-        } catch let err as CarsXEError {
-            throw err
-        } catch {
-            throw CarsXEError.networkError(error)
-        }
-    }
-
-    private func performPOST(url: URL, jsonBody: [String: Any]) async throws -> [String: Any] {
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try JSONSerialization.data(withJSONObject: jsonBody, options: [])
-        do {
-            let (data, response) = try await session.data(for: req)
-            guard let http = response as? HTTPURLResponse else {
-                throw CarsXEError.networkError(NSError(domain: "CarsXE", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
-            }
-            guard (200...299).contains(http.statusCode) else {
-                throw CarsXEError.httpError(statusCode: http.statusCode, data: data)
-            }
-            return try parseJSONObject(from: data)
-        } catch let err as CarsXEError {
-            throw err
-        } catch {
-            throw CarsXEError.networkError(error)
-        }
-    }
-
-    // MARK: - Public API Methods (now return [String: Any])
+    // MARK: - Public API Methods
 
     /// Get vehicle specifications
     /// Required: vin
     /// Optional: deepdata, disableIntVINDecoding
-    public func specs(_ params: [String: String]) async throws -> [String: Any] {
-        try validateParams(params, for: APIEndpoints.specs)
+    public func specs(_ params: [String: String]) throws -> [String: Any] {
         let url = try buildURL(endpoint: "specs", params: params)
-        return try await performGET(url: url)
+        return try fetch(url: url)
     }
 
     /// Get market value
     /// Required: vin
     /// Optional: state
-    public func marketValue(_ params: [String: String]) async throws -> [String: Any] {
-        try validateParams(params, for: APIEndpoints.marketValue)
+    public func marketValue(_ params: [String: String]) throws -> [String: Any] {
         let url = try buildURL(endpoint: "v2/marketvalue", params: params)
-        return try await performGET(url: url)
+        return try fetch(url: url)
     }
 
     /// Get vehicle history
     /// Required: vin
-    public func history(_ params: [String: String]) async throws -> [String: Any] {
-        try validateParams(params, for: APIEndpoints.history)
+    public func history(_ params: [String: String]) throws -> [String: Any] {
         let url = try buildURL(endpoint: "history", params: params)
-        return try await performGET(url: url)
+        return try fetch(url: url)
     }
 
     /// Get vehicle recalls
     /// Required: vin
-    public func recalls(_ params: [String: String]) async throws -> [String: Any] {
-        try validateParams(params, for: APIEndpoints.recalls)
+    public func recalls(_ params: [String: String]) throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/recalls", params: params)
-        return try await performGET(url: url)
+        return try fetch(url: url)
     }
 
     /// Decode international VIN
     /// Required: vin
-    public func internationalVinDecoder(_ params: [String: String]) async throws -> [String: Any] {
-        try validateParams(params, for: APIEndpoints.internationalVinDecoder)
+    public func internationalVinDecoder(_ params: [String: String]) throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/international-vin-decoder", params: params)
-        return try await performGET(url: url)
+        return try fetch(url: url)
     }
 
     /// Decode license plate
     /// Required: plate, country
     /// Optional: state, district
-    /// Special logic: For Pakistan (PK), both state and district are required
-    public func platedecoder(_ params: [String: String]) async throws -> [String: Any] {
-        var effective = params
-        
-        // Set default country if missing or empty
-        let country = (effective["country"]?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "US"
-        effective["country"] = country
-        
-        try validatePlateDecoderParams(effective)
-        
-        let url = try buildURL(endpoint: "v2/platedecoder", params: effective)
-        return try await performGET(url: url)
+    public func platedecoder(_ params: [String: String]) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v2/platedecoder", params: params)
+        return try fetch(url: url)
     }
 
     /// Get vehicle images
     /// Required: make, model
-    /// Optional: year, trim, color, transparent, angle, photoType, size, license
-    public func images(_ params: [String: String]) async throws -> [String: Any] {
-        try validateParams(params, for: APIEndpoints.images)
+    public func images(_ params: [String: String]) throws -> [String: Any] {
         let url = try buildURL(endpoint: "images", params: params)
-        return try await performGET(url: url)
+        return try fetch(url: url)
     }
 
     /// Decode OBD codes
     /// Required: code
-    public func obdCodesDecoder(_ params: [String: String]) async throws -> [String: Any] {
-        try validateParams(params, for: APIEndpoints.obdcodesDecoder)
+    public func obdcodesdecoder(_ params: [String: String]) throws -> [String: Any] {
         let url = try buildURL(endpoint: "obdcodesdecoder", params: params)
-        return try await performGET(url: url)
+        return try fetch(url: url)
     }
 
-    /// Recognize license plate from image
-    /// Required: upload_url (or image/imageUrl)
-    public func plateImageRecognition(_ params: [String: String]) async throws -> [String: Any] {
-        try validateImageUploadParams(params)
-        
-        let upload = params["upload_url"] ?? params["image"] ?? params["imageUrl"] ?? ""
-        
-        guard var comps = URLComponents(string: "\(getApiBaseUrl())/platerecognition") else { 
-            throw CarsXEError.invalidURL 
+    /// Recognize license plate from image (POST)
+    /// Required: imageUrl (string)
+    public func plateImageRecognition(imageUrl: String) throws -> [String: Any] {
+        guard var comps = URLComponents(string: "\(getBaseUrl())/platerecognition") else {
+            throw CarsXEError.invalidURL
         }
         comps.queryItems = [
             URLQueryItem(name: "key", value: getApiKey()),
             URLQueryItem(name: "source", value: sourceName)
         ]
         guard let url = comps.url else { throw CarsXEError.invalidURL }
-        let body: [String: Any] = ["image": upload]
-        return try await performPOST(url: url, jsonBody: body)
+        let body: [String: Any] = ["image": imageUrl]
+        return try post(url: url, jsonBody: body, headers: ["Content-Type": "application/json"])
     }
 
-    /// Extract VIN from image using OCR
-    /// Required: upload_url (or image/imageUrl)
-    public func vinOcr(_ params: [String: String]) async throws -> [String: Any] {
-        try validateImageUploadParams(params)
-        
-        let upload = params["upload_url"] ?? params["image"] ?? params["imageUrl"] ?? ""
-        
-        guard var comps = URLComponents(string: "\(getApiBaseUrl())/v1/vinocr") else { 
-            throw CarsXEError.invalidURL 
+    /// Extract VIN from image using OCR (POST)
+    /// Required: imageUrl (string)
+    public func vinOcr(imageUrl: String) throws -> [String: Any] {
+        guard var comps = URLComponents(string: "\(getBaseUrl())/v1/vinocr") else {
+            throw CarsXEError.invalidURL
         }
         comps.queryItems = [
             URLQueryItem(name: "key", value: getApiKey()),
             URLQueryItem(name: "source", value: sourceName)
         ]
         guard let url = comps.url else { throw CarsXEError.invalidURL }
-        let body: [String: Any] = ["image": upload]
-        return try await performPOST(url: url, jsonBody: body)
+        let body: [String: Any] = ["image": imageUrl]
+        return try post(url: url, jsonBody: body, headers: ["Content-Type": "application/json"])
     }
 
     /// Search by year, make, model
     /// Required: year, make, model
-    /// Optional: trim
-    public func yearMakeModel(_ params: [String: String]) async throws -> [String: Any] {
-        try validateParams(params, for: APIEndpoints.yearMakeModel)
+    public func yearMakeModel(_ params: [String: String]) throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/ymm", params: params)
-        return try await performGET(url: url)
+        return try fetch(url: url)
     }
 }
