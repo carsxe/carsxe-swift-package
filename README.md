@@ -23,7 +23,7 @@ To get started with the CarsXE API (Swift package), follow these steps:
 
    ```swift
    dependencies: [
-       .package(url: "https://github.com/carsxe/carsxe-swift-package.git", from: "1.0.0")
+       .package(url: "https://github.com/carsxe/carsxe-swift-package.git", from: "1.0.1")
    ]
    ```
 
