@@ -265,4 +265,11 @@ public final class CarsXE {
         let url = try buildURL(endpoint: "v1/ymm", params: params)
         return try fetch(url: url)
     }
+
+    /// Get lien and theft information
+    /// Required: vin
+    public func lienAndTheft(_ params: [String: String]) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/lien-theft", params: params)
+        return try fetch(url: url)
+    }
 }

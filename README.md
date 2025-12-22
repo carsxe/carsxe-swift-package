@@ -13,8 +13,7 @@
 To get started with the CarsXE API (Swift package), follow these steps:
 
 1. **Sign up for a CarsXE account:**
-
-   - [Register here](https://api.carsxe.com/register)  
+   - [Register here](https://api.carsxe.com/register)
    - Add a [payment method](https://api.carsxe.com/dashboard/billing#payment-methods) to activate your subscription and get your API key.
 
 2. **Add the CarsXE Swift Package to Your Project:**
@@ -64,6 +63,7 @@ To get started with the CarsXE API (Swift package), follow these steps:
 The Swift package exposes methods that throw on error and return dynamic JSON as `[String: Any]`. Use do/catch to handle errors.
 
 Example (synchronous/throwing style):
+
 ```swift
 let API_KEY = "YOUR_API_KEY"
 let carsxe = CarsXE(apiKey: API_KEY)
@@ -83,6 +83,7 @@ do {
 ```
 
 Example (POST endpoints that accept an image URL):
+
 ```swift
 do {
     let plateResult = try carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
@@ -101,13 +102,16 @@ Note: Depending on the runtime and package version you use, there may also be as
 The CarsXE Swift package provides the following public methods (signatures may be `throws` and return `[String: Any]`):
 
 ### specs — Decode VIN & get full vehicle specifications
+
 Required:
+
 - `vin`  
-Optional:
-- `deepdata`  
-- `disableIntVINDecoding`  
+  Optional:
+- `deepdata`
+- `disableIntVINDecoding`
 
 Example:
+
 ```swift
 let vehicle = try carsxe.specs(["vin": "WBAFR7C57CC811956"])
 ```
@@ -115,9 +119,12 @@ let vehicle = try carsxe.specs(["vin": "WBAFR7C57CC811956"])
 ---
 
 ### internationalVinDecoder — Decode VIN with worldwide support
+
 Required:
+
 - `vin`  
-Example:
+  Example:
+
 ```swift
 let intvin = try carsxe.internationalVinDecoder(["vin": "WF0MXXGBWM8R43240"])
 ```
@@ -125,14 +132,17 @@ let intvin = try carsxe.internationalVinDecoder(["vin": "WF0MXXGBWM8R43240"])
 ---
 
 ### platedecoder — Decode license plate info (plate, country)
+
 Required:
+
 - `plate`
 - `country` (for many countries; may default to "US" when missing)  
-Optional:
+  Optional:
 - `state` (required for some countries, e.g. US, AU, CA)
 - `district` (required for Pakistan)
 
 Example:
+
 ```swift
 let decodedPlate = try carsxe.platedecoder(["plate": "7XER187", "state": "CA", "country": "US"])
 ```
@@ -140,11 +150,14 @@ let decodedPlate = try carsxe.platedecoder(["plate": "7XER187", "state": "CA", "
 ---
 
 ### marketValue — Estimate vehicle market value based on VIN
+
 Required:
+
 - `vin`  
-Optional:
+  Optional:
 - `state`  
-Example:
+  Example:
+
 ```swift
 let marketvalue = try carsxe.marketValue(["vin": "WBAFR7C57CC811956"])
 ```
@@ -152,9 +165,12 @@ let marketvalue = try carsxe.marketValue(["vin": "WBAFR7C57CC811956"])
 ---
 
 ### history — Retrieve vehicle history
+
 Required:
+
 - `vin`  
-Example:
+  Example:
+
 ```swift
 let history = try carsxe.history(["vin": "WBAFR7C57CC811956"])
 ```
@@ -162,12 +178,15 @@ let history = try carsxe.history(["vin": "WBAFR7C57CC811956"])
 ---
 
 ### images — Fetch images by make, model, year, trim
+
 Required:
+
 - `make`
 - `model`  
-Optional:
+  Optional:
 - `year`, `trim`, `color`, `transparent`, `angle`, `photoType`, `size`, `license`  
-Example:
+  Example:
+
 ```swift
 let images = try carsxe.images(["make": "BMW", "model": "X5", "year": "2019"])
 ```
@@ -175,9 +194,12 @@ let images = try carsxe.images(["make": "BMW", "model": "X5", "year": "2019"])
 ---
 
 ### recalls — Get safety recall data for a VIN
+
 Required:
+
 - `vin`  
-Example:
+  Example:
+
 ```swift
 let recalls = try carsxe.recalls(["vin": "1C4JJXR64PW696340"])
 ```
@@ -185,9 +207,12 @@ let recalls = try carsxe.recalls(["vin": "1C4JJXR64PW696340"])
 ---
 
 ### plateImageRecognition — Read & decode plates from images (POST)
+
 Required:
+
 - `imageUrl` (string)  
-Example:
+  Example:
+
 ```swift
 let plateImg = try carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
 ```
@@ -195,9 +220,12 @@ let plateImg = try carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.co
 ---
 
 ### vinOcr — Extract VINs from images using OCR (POST)
+
 Required:
+
 - `imageUrl` (string)  
-Example:
+  Example:
+
 ```swift
 let vinocr = try carsxe.vinOcr(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
 ```
@@ -205,11 +233,14 @@ let vinocr = try carsxe.vinOcr(imageUrl: "https://api.carsxe.com/img/apis/plate_
 ---
 
 ### yearMakeModel — Query vehicle by year, make, model and trim (optional)
+
 Required:
+
 - `year`, `make`, `model`  
-Optional:
+  Optional:
 - `trim`  
-Example:
+  Example:
+
 ```swift
 let yymm = try carsxe.yearMakeModel(["year": "2012", "make": "BMW", "model": "5 Series"])
 ```
@@ -217,11 +248,27 @@ let yymm = try carsxe.yearMakeModel(["year": "2012", "make": "BMW", "model": "5 
 ---
 
 ### obdcodesdecoder — Decode OBD error/diagnostic codes
+
 Required:
+
 - `code`  
-Example:
+  Example:
+
 ```swift
 let obdcode = try carsxe.obdcodesdecoder(["code": "P0115"])
+```
+
+---
+
+### lienAndTheft — Get lien and theft information
+
+Required:
+
+- `vin`  
+  Example:
+
+```swift
+let lienTheft = try carsxe.lienAndTheft(["vin": "2C3CDXFG1FH762860"])
 ```
 
 ---
