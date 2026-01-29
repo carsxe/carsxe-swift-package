@@ -155,7 +155,9 @@ Required:
 
 - `vin`  
   Optional:
-- `state`  
+- `state`
+- `mileage`
+- `condition`
   Example:
 
 ```swift
