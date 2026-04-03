@@ -161,7 +161,12 @@ Required:
   Example:
 
 ```swift
-let marketvalue = try carsxe.marketValue(["vin": "WBAFR7C57CC811956"])
+let marketvalue = try carsxe.marketValue([
+    "vin": "WBAFR7C57CC811956",
+    "state": "CA",
+    "mileage": "50000",
+    "condition": "average"
+])
 ```
 
 ---

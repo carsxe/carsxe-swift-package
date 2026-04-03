@@ -180,7 +180,7 @@ public final class CarsXE {
 
     /// Get market value
     /// Required: vin
-    /// Optional: state
+    /// Optional: state (US state code), mileage (numeric string), condition (excellent|clean|average|rough)
     public func marketValue(_ params: [String: String]) throws -> [String: Any] {
         let url = try buildURL(endpoint: "v2/marketvalue", params: params)
         return try fetch(url: url)
