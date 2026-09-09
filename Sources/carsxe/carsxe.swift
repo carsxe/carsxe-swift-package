@@ -3,9 +3,9 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// Lightweight CarsXE client (Swift version of the Java template).
+/// Lightweight CarsXE client.
 /// - API: https://api.carsxe.com
-/// - Public methods are synchronous and throw on error, returning `[String: Any]`.
+/// - Public HTTP methods are `async throws` and return `[String: Any]` (JSON) unless noted.
 public final class CarsXE {
     private let apiKey: String
     private let sourceName = "swift"
@@ -52,7 +52,6 @@ public final class CarsXE {
         for (k, v) in params {
             items.append(URLQueryItem(name: k, value: v))
         }
-        // always include key and source
         items.append(URLQueryItem(name: "key", value: getApiKey()))
         items.append(URLQueryItem(name: "source", value: sourceName))
         comps.queryItems = items
@@ -61,17 +60,38 @@ public final class CarsXE {
         return url
     }
 
-    // MARK: - Networking (synchronous wrappers)
+    // MARK: - Networking
 
-    /// Synchronously perform a GET request and return JSON as [String: Any].
-    private func fetch(url: URL) throws -> [String: Any] {
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+    /// Perform a request with native async URLSession on Darwin, or an async
+    /// continuation wrapper on Linux (`FoundationNetworking`).
+    private func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        #if canImport(FoundationNetworking)
+        try await withCheckedThrowingContinuation { continuation in
+            let task = session.dataTask(with: request) { data, response, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let data, let response {
+                    continuation.resume(returning: (data, response))
+                } else {
+                    continuation.resume(throwing: URLError(.badServerResponse))
+                }
+            }
+            task.resume()
+        }
+        #else
+        try await session.data(for: request)
+        #endif
+    }
 
-        let (data, response, error) = synchronousDataTask(with: request)
-
-        if let err = error {
-            throw CarsXEError.networkError(err)
+    private func perform(_ request: URLRequest) async throws -> Data {
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await self.data(for: request)
+        } catch let error as CarsXEError {
+            throw error
+        } catch {
+            throw CarsXEError.networkError(error)
         }
 
         guard let http = response as? HTTPURLResponse else {
@@ -82,15 +102,16 @@ public final class CarsXE {
             throw CarsXEError.httpError(statusCode: http.statusCode, data: data)
         }
 
-        guard let data = data else {
-            return [:]
-        }
-
-        return try parseJSONObject(from: data)
+        return data
     }
 
-    /// Synchronously perform a POST with JSON body and return JSON as [String: Any].
-    private func post(url: URL, jsonBody: [String: Any], headers: [String: String] = [:]) throws -> [String: Any] {
+    private func fetch(url: URL) async throws -> [String: Any] {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        return try parseJSONObject(from: try await perform(request))
+    }
+
+    private func post(url: URL, jsonBody: [String: Any], headers: [String: String] = [:]) async throws -> [String: Any] {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -100,79 +121,14 @@ public final class CarsXE {
         }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: jsonBody, options: [])
-
-        let (data, response, error) = synchronousDataTask(with: request)
-
-        if let err = error {
-            throw CarsXEError.networkError(err)
-        }
-
-        guard let http = response as? HTTPURLResponse else {
-            throw CarsXEError.networkError(NSError(domain: "CarsXE", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
-        }
-
-        guard (200...299).contains(http.statusCode) else {
-            throw CarsXEError.httpError(statusCode: http.statusCode, data: data)
-        }
-
-        guard let data = data else {
-            return [:]
-        }
-
-        return try parseJSONObject(from: data)
+        return try parseJSONObject(from: try await perform(request))
     }
 
-    /// Synchronously perform a GET request and return the response body as text.
-    private func fetchText(url: URL) throws -> String {
+    private func fetchText(url: URL) async throws -> String {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-
-        let (data, response, error) = synchronousDataTask(with: request)
-
-        if let err = error {
-            throw CarsXEError.networkError(err)
-        }
-
-        guard let http = response as? HTTPURLResponse else {
-            throw CarsXEError.networkError(NSError(domain: "CarsXE", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
-        }
-
-        guard (200...299).contains(http.statusCode) else {
-            throw CarsXEError.httpError(statusCode: http.statusCode, data: data)
-        }
-
-        guard let data = data else {
-            return ""
-        }
-
+        let data = try await perform(request)
         return String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)
-    }
-
-    /// Helper to synchronously run a URLSession dataTask.
-    /// Uses reference-type holders to avoid mutating captured local variables in the closure
-    /// (fixes Swift 6 "mutation of captured var in concurrently-executing code" diagnostics).
-    /// Returns (Data?, URLResponse?, Error?)
-    private func synchronousDataTask(with request: URLRequest) -> (Data?, URLResponse?, Error?) {
-        // Reference-type holders — mutation of properties is allowed even in Swift 6 concurrency mode.
-        final class Box<T> { var value: T?; init(_ v: T? = nil) { value = v } }
-
-        let sem = DispatchSemaphore(value: 0)
-        let responseDataBox = Box<Data>()            // Box<Data>.value is Data? (single optional)
-        let responseBox = Box<URLResponse>()        // Box<URLResponse>.value is URLResponse?
-        let errorBox = Box<Error>()                 // Box<Error>.value is Error?
-
-        let task = session.dataTask(with: request) { data, response, error in
-            responseDataBox.value = data
-            responseBox.value = response
-            errorBox.value = error
-            sem.signal()
-        }
-        task.resume()
-
-        // Wait (caller must avoid using on main thread for UI apps)
-        _ = sem.wait(timeout: .distantFuture)
-
-        return (responseDataBox.value, responseBox.value, errorBox.value)
     }
 
     // MARK: - JSON Parsing
@@ -183,10 +139,8 @@ public final class CarsXE {
             if let dict = obj as? [String: Any] {
                 return dict
             } else if let arr = obj as? [Any] {
-                // Wrap arrays in an object with "data" key for consistent access
                 return ["data": arr]
             } else {
-                // Wrap scalars in an object with "value" key
                 return ["value": obj]
             }
         } catch {
@@ -199,65 +153,65 @@ public final class CarsXE {
     /// Get vehicle specifications
     /// Required: vin
     /// Optional: deepdata, disableIntVINDecoding
-    public func specs(_ params: [String: String]) throws -> [String: Any] {
+    public func specs(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "specs", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Get market value
     /// Required: vin
     /// Optional: state (US state code), mileage (numeric string), condition (excellent|clean|average|rough)
-    public func marketValue(_ params: [String: String]) throws -> [String: Any] {
+    public func marketValue(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v2/marketvalue", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Get vehicle history
     /// Required: vin
-    public func history(_ params: [String: String]) throws -> [String: Any] {
+    public func history(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "history", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Get vehicle recalls
     /// Required: vin
-    public func recalls(_ params: [String: String]) throws -> [String: Any] {
+    public func recalls(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/recalls", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Decode international VIN
     /// Required: vin
-    public func internationalVinDecoder(_ params: [String: String]) throws -> [String: Any] {
+    public func internationalVinDecoder(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/international-vin-decoder", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Decode license plate
     /// Required: plate, country
     /// Optional: state, district
-    public func platedecoder(_ params: [String: String]) throws -> [String: Any] {
+    public func platedecoder(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v2/platedecoder", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Get vehicle images
     /// Required: make, model
-    public func images(_ params: [String: String]) throws -> [String: Any] {
+    public func images(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "images", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Decode OBD codes
     /// Required: code
-    public func obdcodesdecoder(_ params: [String: String]) throws -> [String: Any] {
+    public func obdcodesdecoder(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "obdcodesdecoder", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Recognize license plate from image (POST)
     /// Required: imageUrl (string)
-    public func plateImageRecognition(imageUrl: String) throws -> [String: Any] {
+    public func plateImageRecognition(imageUrl: String) async throws -> [String: Any] {
         guard var comps = URLComponents(string: "\(getBaseUrl())/platerecognition") else {
             throw CarsXEError.invalidURL
         }
@@ -267,12 +221,12 @@ public final class CarsXE {
         ]
         guard let url = comps.url else { throw CarsXEError.invalidURL }
         let body: [String: Any] = ["image": imageUrl]
-        return try post(url: url, jsonBody: body, headers: ["Content-Type": "application/json"])
+        return try await post(url: url, jsonBody: body, headers: ["Content-Type": "application/json"])
     }
 
     /// Extract VIN from image using OCR (POST)
     /// Required: imageUrl (string)
-    public func vinOcr(imageUrl: String) throws -> [String: Any] {
+    public func vinOcr(imageUrl: String) async throws -> [String: Any] {
         guard var comps = URLComponents(string: "\(getBaseUrl())/v1/vinocr") else {
             throw CarsXEError.invalidURL
         }
@@ -282,34 +236,34 @@ public final class CarsXE {
         ]
         guard let url = comps.url else { throw CarsXEError.invalidURL }
         let body: [String: Any] = ["image": imageUrl]
-        return try post(url: url, jsonBody: body, headers: ["Content-Type": "application/json"])
+        return try await post(url: url, jsonBody: body, headers: ["Content-Type": "application/json"])
     }
 
     /// Search by year, make, model
     /// Required: year, make, model
-    public func yearMakeModel(_ params: [String: String]) throws -> [String: Any] {
+    public func yearMakeModel(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/ymm", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Get lien and theft information
     /// Required: vin
-    public func lienAndTheft(_ params: [String: String]) throws -> [String: Any] {
+    public func lienAndTheft(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/lien-theft", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Get safety recall data by year, make, and model
     /// Required: year, make, model
-    public func recallsYmm(_ params: [String: String]) throws -> [String: Any] {
+    public func recallsYmm(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/recalls-ymm", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Submit a bulk recalls batch (POST)
     /// Required: at least one of vins, csv, csvUrl
     /// Optional: webhookUrl
-    public func submitBulkRecallBatch(_ body: [String: Any]) throws -> [String: Any] {
+    public func submitBulkRecallBatch(_ body: [String: Any]) async throws -> [String: Any] {
         guard var comps = URLComponents(string: "\(getBaseUrl())/v1/recalls-batch/submit") else {
             throw CarsXEError.invalidURL
         }
@@ -318,24 +272,25 @@ public final class CarsXE {
             URLQueryItem(name: "source", value: sourceName)
         ]
         guard let url = comps.url else { throw CarsXEError.invalidURL }
-        return try post(url: url, jsonBody: body, headers: ["Content-Type": "application/json"])
+        return try await post(url: url, jsonBody: body, headers: ["Content-Type": "application/json"])
     }
 
     /// Get bulk recalls batch status
     /// Required: batchId
-    public func getBulkRecallBatchStatus(_ batchId: String) throws -> [String: Any] {
+    public func getBulkRecallBatchStatus(_ batchId: String) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/recalls-batch/status", params: ["batchId": batchId])
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Get bulk recalls batch results
     /// Required: batchId
-    public func getBulkRecallBatchResults(_ batchId: String) throws -> [String: Any] {
+    public func getBulkRecallBatchResults(_ batchId: String) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/recalls-batch/results", params: ["batchId": batchId])
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
-    /// Build the CSV download URL for a bulk recalls batch (includes `key` and `source` query items)
+    /// Build the CSV download URL for a bulk recalls batch (includes `key` and `source` query items).
+    /// Does not perform I/O.
     /// Required: batchId
     public func getBulkRecallBatchDownloadUrl(_ batchId: String) throws -> String {
         let url = try buildURL(endpoint: "v1/recalls-batch/download", params: ["batchId": batchId])
@@ -344,47 +299,47 @@ public final class CarsXE {
 
     /// Download bulk recalls batch results as CSV text
     /// Required: batchId
-    public func downloadBulkRecallBatch(_ batchId: String) throws -> String {
+    public func downloadBulkRecallBatch(_ batchId: String) async throws -> String {
         let url = try buildURL(endpoint: "v1/recalls-batch/download", params: ["batchId": batchId])
-        return try fetchText(url: url)
+        return try await fetchText(url: url)
     }
 
     /// Get year/make/model/variant option lists for cascading dropdowns
     /// Optional: dimension, year, make, model, trim
-    public func ymmOptions(_ params: [String: String] = [:]) throws -> [String: Any] {
+    public func ymmOptions(_ params: [String: String] = [:]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/ymm-options", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Get registered owner(s) by VIN
     /// Required: vin
     /// Optional: include
-    public func ownershipVin(_ params: [String: String]) throws -> [String: Any] {
+    public func ownershipVin(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/ownership/vin", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Get contact details by person name and address
     /// Required: first_name, last_name, address, zip
     /// Optional: include
-    public func ownershipPerson(_ params: [String: String]) throws -> [String: Any] {
+    public func ownershipPerson(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/ownership/person", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Get residents by street address
     /// Required: address, zip
     /// Optional: include, variant
-    public func ownershipAddress(_ params: [String: String]) throws -> [String: Any] {
+    public func ownershipAddress(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/ownership/address", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 
     /// Search people by ZIP code
     /// Required: zip
     /// Optional: gender, min_age, max_age, income, page, limit, include, variant
-    public func ownershipZip(_ params: [String: String]) throws -> [String: Any] {
+    public func ownershipZip(_ params: [String: String]) async throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/ownership/zip", params: params)
-        return try fetch(url: url)
+        return try await fetch(url: url)
     }
 }
