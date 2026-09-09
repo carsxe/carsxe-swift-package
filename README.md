@@ -60,9 +60,9 @@ To get started with the CarsXE API (Swift package), follow these steps:
 
 ## Usage
 
-The Swift package exposes methods that throw on error and return dynamic JSON as `[String: Any]`. Use do/catch to handle errors.
+The Swift package exposes `async throws` methods that return dynamic JSON as `[String: Any]`. Call them from an async context with `try await`, and use do/catch to handle errors.
 
-Example (synchronous/throwing style):
+Example:
 
 ```swift
 let API_KEY = "YOUR_API_KEY"
@@ -70,7 +70,7 @@ let carsxe = CarsXE(apiKey: API_KEY)
 let vin = "WBAFR7C57CC811956"
 
 do {
-    let vehicle = try carsxe.specs(["vin": vin])
+    let vehicle = try await carsxe.specs(["vin": vin])
     if let input = vehicle["input"] as? [String: Any],
        let vinValue = input["vin"] as? String {
         print("VIN: \(vinValue)")
@@ -86,20 +86,20 @@ Example (POST endpoints that accept an image URL):
 
 ```swift
 do {
-    let plateResult = try carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
+    let plateResult = try await carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
     print(plateResult)
 } catch {
     print("Plate image error: \(error)")
 }
 ```
 
-Note: Depending on the runtime and package version you use, there may also be async or completion-based helpers. Check the package source for async variants or completion wrappers.
+Call these methods from an `async` function, SwiftUI `.task`, or similar async context.
 
 ---
 
 ## 📚 Endpoints
 
-The CarsXE Swift package provides the following public methods (signatures may be `throws` and return `[String: Any]`):
+The CarsXE Swift package provides the following public methods (`async throws`, returning `[String: Any]` unless noted):
 
 ### specs — Decode VIN & get full vehicle specifications
 
@@ -113,7 +113,7 @@ Required:
 Example:
 
 ```swift
-let vehicle = try carsxe.specs(["vin": "WBAFR7C57CC811956"])
+let vehicle = try await carsxe.specs(["vin": "WBAFR7C57CC811956"])
 ```
 
 ---
@@ -126,7 +126,7 @@ Required:
   Example:
 
 ```swift
-let intvin = try carsxe.internationalVinDecoder(["vin": "WF0MXXGBWM8R43240"])
+let intvin = try await carsxe.internationalVinDecoder(["vin": "WF0MXXGBWM8R43240"])
 ```
 
 ---
@@ -144,7 +144,7 @@ Required:
 Example:
 
 ```swift
-let decodedPlate = try carsxe.platedecoder(["plate": "7XER187", "state": "CA", "country": "US"])
+let decodedPlate = try await carsxe.platedecoder(["plate": "7XER187", "state": "CA", "country": "US"])
 ```
 
 ---
@@ -161,7 +161,7 @@ Required:
   Example:
 
 ```swift
-let marketvalue = try carsxe.marketValue([
+let marketvalue = try await carsxe.marketValue([
     "vin": "WBAFR7C57CC811956",
     "state": "CA",
     "mileage": "50000",
@@ -179,7 +179,7 @@ Required:
   Example:
 
 ```swift
-let history = try carsxe.history(["vin": "WBAFR7C57CC811956"])
+let history = try await carsxe.history(["vin": "WBAFR7C57CC811956"])
 ```
 
 ---
@@ -195,7 +195,7 @@ Required:
   Example:
 
 ```swift
-let images = try carsxe.images(["make": "BMW", "model": "X5", "year": "2019"])
+let images = try await carsxe.images(["make": "BMW", "model": "X5", "year": "2019"])
 ```
 
 ---
@@ -208,7 +208,7 @@ Required:
   Example:
 
 ```swift
-let recalls = try carsxe.recalls(["vin": "1C4JJXR64PW696340"])
+let recalls = try await carsxe.recalls(["vin": "1C4JJXR64PW696340"])
 ```
 
 ---
@@ -221,7 +221,7 @@ Required:
   Example:
 
 ```swift
-let plateImg = try carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
+let plateImg = try await carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
 ```
 
 ---
@@ -234,7 +234,7 @@ Required:
   Example:
 
 ```swift
-let vinocr = try carsxe.vinOcr(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
+let vinocr = try await carsxe.vinOcr(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
 ```
 
 ---
@@ -249,7 +249,7 @@ Required:
   Example:
 
 ```swift
-let yymm = try carsxe.yearMakeModel(["year": "2012", "make": "BMW", "model": "5 Series"])
+let yymm = try await carsxe.yearMakeModel(["year": "2012", "make": "BMW", "model": "5 Series"])
 ```
 
 ---
@@ -262,7 +262,7 @@ Required:
   Example:
 
 ```swift
-let obdcode = try carsxe.obdcodesdecoder(["code": "P0115"])
+let obdcode = try await carsxe.obdcodesdecoder(["code": "P0115"])
 ```
 
 ---
@@ -275,7 +275,181 @@ Required:
   Example:
 
 ```swift
-let lienTheft = try carsxe.lienAndTheft(["vin": "2C3CDXFG1FH762860"])
+let lienTheft = try await carsxe.lienAndTheft(["vin": "2C3CDXFG1FH762860"])
+```
+
+---
+
+### recallsYmm — Get safety recall data by year, make, and model
+
+Required:
+
+- `year`, `make`, `model`  
+  Example:
+
+```swift
+let recalls = try await carsxe.recallsYmm([
+    "year": "2026",
+    "make": "toyota",
+    "model": "corolla"
+])
+```
+
+---
+
+### submitBulkRecallBatch — Submit VINs for async bulk recall checking (POST)
+
+Required (at least one):
+
+- `vins` (array of 17-character VIN strings)
+- `csv` (inline CSV text)
+- `csvUrl` (HTTPS URL to a CSV file)  
+  Optional:
+- `webhookUrl`  
+  Example:
+
+```swift
+let submitted = try await carsxe.submitBulkRecallBatch([
+    "vins": [
+        "1HGBH41JXMN109186",
+        "5YJSA1E26HF000001",
+        "1C4JJXR64PW696340"
+    ],
+    "webhookUrl": "https://your-server.com/webhook"
+])
+```
+
+---
+
+### getBulkRecallBatchStatus — Poll a bulk recalls batch
+
+Required:
+
+- `batchId`  
+  Example:
+
+```swift
+let status = try await carsxe.getBulkRecallBatchStatus("brb_mnablbn7_wvbaqv")
+```
+
+---
+
+### getBulkRecallBatchResults — Retrieve bulk recall results as JSON
+
+Required:
+
+- `batchId`  
+  Example:
+
+```swift
+let results = try await carsxe.getBulkRecallBatchResults("brb_mnablbn7_wvbaqv")
+```
+
+---
+
+### getBulkRecallBatchDownloadUrl / downloadBulkRecallBatch — Download bulk recall results as CSV
+
+Required:
+
+- `batchId`  
+  Example:
+
+```swift
+let downloadUrl = try carsxe.getBulkRecallBatchDownloadUrl("brb_mnablbn7_wvbaqv")
+let csvText = try await carsxe.downloadBulkRecallBatch("brb_mnablbn7_wvbaqv")
+```
+
+---
+
+### ymmOptions — Populate year, make, model, and variant dropdowns
+
+Optional:
+
+- `dimension` (`years`, `makes`, `models`, `trims`, `variants`)
+- `year`, `make`, `model`, `trim`  
+  Example:
+
+```swift
+let years = try await carsxe.ymmOptions([:])
+let makes = try await carsxe.ymmOptions(["year": "2026"])
+let models = try await carsxe.ymmOptions(["make": "Toyota"])
+let variants = try await carsxe.ymmOptions([
+    "year": "2026",
+    "make": "Toyota",
+    "model": "Tacoma"
+])
+```
+
+---
+
+### ownershipVin — Look up registered owner(s) by VIN
+
+Required:
+
+- `vin`  
+  Optional:
+- `include` (`demographics`, `emails`, `phones`, `vehicle_history`)  
+  Example:
+
+```swift
+let owners = try await carsxe.ownershipVin(["vin": "1FT8X3BT0BEA61538"])
+```
+
+---
+
+### ownershipPerson — Resolve contact details by name and address
+
+Required:
+
+- `first_name`, `last_name`, `address`, `zip`  
+  Optional:
+- `include`  
+  Example:
+
+```swift
+let person = try await carsxe.ownershipPerson([
+    "first_name": "John",
+    "last_name": "Sample",
+    "address": "123 Example St",
+    "zip": "90210"
+])
+```
+
+---
+
+### ownershipAddress — Find residents at a street address
+
+Required:
+
+- `address`, `zip`  
+  Optional:
+- `include`, `variant`  
+  Example:
+
+```swift
+let residents = try await carsxe.ownershipAddress([
+    "address": "123 Example St",
+    "zip": "90210"
+])
+```
+
+---
+
+### ownershipZip — Search people in a ZIP code
+
+Required:
+
+- `zip`  
+  Optional:
+- `gender`, `min_age`, `max_age`, `income`, `page`, `limit`, `include`, `variant`  
+  Example:
+
+```swift
+let records = try await carsxe.ownershipZip([
+    "zip": "00000",
+    "gender": "f",
+    "min_age": "45"
+])
 ```
 
 ---
@@ -283,9 +457,9 @@ let lienTheft = try carsxe.lienAndTheft(["vin": "2C3CDXFG1FH762860"])
 ## Notes & Best Practices
 
 - Parameter requirements: Each endpoint requires specific parameters—see the Required/Optional fields above.
-- Return values: All responses from this package are Swift dictionaries ([String: Any]) for easy and flexible access.
-- Error handling: Use do/catch blocks to gracefully handle errors thrown by the API wrapper.
-- Threading & concurrency: Some package builds expose synchronous (blocking) wrappers that use URLSession + semaphores — avoid calling those from the main/UI thread. If the package or your code uses async/await, prefer keeping network calls and immediate processing in the same async context or convert responses to typed Codable/Sendable models before crossing concurrency boundaries.
+- Return values: JSON endpoints return Swift dictionaries (`[String: Any]`). `getBulkRecallBatchDownloadUrl` is a sync URL builder (`throws` → `String`). `downloadBulkRecallBatch` is `async throws` and returns CSV text.
+- Error handling: Use do/catch with `try await` to handle errors from the API wrapper.
+- Concurrency: HTTP methods use Swift concurrency (`URLSession.data(for:)` on Apple platforms). Call them from an async context — they no longer block a thread with a semaphore.
 - Serialization: If you need to pass results between threads/tasks, consider serializing to Data (JSON) or decoding into Codable types before dispatching.
 - More info: For advanced usage and full details, visit the [official API documentation](https://api.carsxe.com/docs).
 
