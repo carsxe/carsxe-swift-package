@@ -387,12 +387,4 @@ public final class CarsXE {
         let url = try buildURL(endpoint: "v1/ownership/zip", params: params)
         return try fetch(url: url)
     }
-
-    /// Decode a US license plate
-    /// Required: plate, state
-    /// Optional: decodeVIN
-    public func usPlateDecoder(_ params: [String: String]) throws -> [String: Any] {
-        let url = try buildURL(endpoint: "v1/us-platedecoder", params: params)
-        return try fetch(url: url)
-    }
 }

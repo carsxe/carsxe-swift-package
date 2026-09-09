@@ -136,9 +136,4 @@ public struct APIEndpoints {
         required: ["zip"],
         optional: ["gender", "min_age", "max_age", "income", "page", "limit", "include", "variant"]
     )
-
-    public static let usPlateDecoder = EndpointParams(
-        required: ["plate", "state"],
-        optional: ["decodeVIN"]
-    )
 }

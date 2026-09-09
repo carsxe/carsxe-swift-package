@@ -454,26 +454,6 @@ let records = try carsxe.ownershipZip([
 
 ---
 
-### usPlateDecoder — Decode a US license plate (plate, state)
-
-Required:
-
-- `plate`
-- `state`  
-  Optional:
-- `decodeVIN`  
-  Example:
-
-```swift
-let usPlate = try carsxe.usPlateDecoder([
-    "plate": "H37SFS",
-    "state": "NJ",
-    "decodeVIN": "true"
-])
-```
-
----
-
 ## Notes & Best Practices
 
 - Parameter requirements: Each endpoint requires specific parameters—see the Required/Optional fields above.
