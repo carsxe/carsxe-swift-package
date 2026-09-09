@@ -85,4 +85,59 @@ public struct APIEndpoints {
         required: ["year", "make", "model"],
         optional: ["trim"]
     )
+
+    public static let lienAndTheft = EndpointParams(
+        required: ["vin"]
+    )
+
+    public static let recallsYmm = EndpointParams(
+        required: ["year", "make", "model"]
+    )
+
+    public static let submitBulkRecallBatch = EndpointParams(
+        required: [],
+        optional: ["vins", "csv", "csvUrl", "webhookUrl"]
+    )
+
+    public static let getBulkRecallBatchStatus = EndpointParams(
+        required: ["batchId"]
+    )
+
+    public static let getBulkRecallBatchResults = EndpointParams(
+        required: ["batchId"]
+    )
+
+    public static let downloadBulkRecallBatch = EndpointParams(
+        required: ["batchId"]
+    )
+
+    public static let ymmOptions = EndpointParams(
+        required: [],
+        optional: ["dimension", "year", "make", "model", "trim"]
+    )
+
+    public static let ownershipVin = EndpointParams(
+        required: ["vin"],
+        optional: ["include"]
+    )
+
+    public static let ownershipPerson = EndpointParams(
+        required: ["first_name", "last_name", "address", "zip"],
+        optional: ["include"]
+    )
+
+    public static let ownershipAddress = EndpointParams(
+        required: ["address", "zip"],
+        optional: ["include", "variant"]
+    )
+
+    public static let ownershipZip = EndpointParams(
+        required: ["zip"],
+        optional: ["gender", "min_age", "max_age", "income", "page", "limit", "include", "variant"]
+    )
+
+    public static let usPlateDecoder = EndpointParams(
+        required: ["plate", "state"],
+        optional: ["decodeVIN"]
+    )
 }

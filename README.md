@@ -280,6 +280,200 @@ let lienTheft = try carsxe.lienAndTheft(["vin": "2C3CDXFG1FH762860"])
 
 ---
 
+### recallsYmm — Get safety recall data by year, make, and model
+
+Required:
+
+- `year`, `make`, `model`  
+  Example:
+
+```swift
+let recalls = try carsxe.recallsYmm([
+    "year": "2026",
+    "make": "toyota",
+    "model": "corolla"
+])
+```
+
+---
+
+### submitBulkRecallBatch — Submit VINs for async bulk recall checking (POST)
+
+Required (at least one):
+
+- `vins` (array of 17-character VIN strings)
+- `csv` (inline CSV text)
+- `csvUrl` (HTTPS URL to a CSV file)  
+  Optional:
+- `webhookUrl`  
+  Example:
+
+```swift
+let submitted = try carsxe.submitBulkRecallBatch([
+    "vins": [
+        "1HGBH41JXMN109186",
+        "5YJSA1E26HF000001",
+        "1C4JJXR64PW696340"
+    ],
+    "webhookUrl": "https://your-server.com/webhook"
+])
+```
+
+---
+
+### getBulkRecallBatchStatus — Poll a bulk recalls batch
+
+Required:
+
+- `batchId`  
+  Example:
+
+```swift
+let status = try carsxe.getBulkRecallBatchStatus("brb_mnablbn7_wvbaqv")
+```
+
+---
+
+### getBulkRecallBatchResults — Retrieve bulk recall results as JSON
+
+Required:
+
+- `batchId`  
+  Example:
+
+```swift
+let results = try carsxe.getBulkRecallBatchResults("brb_mnablbn7_wvbaqv")
+```
+
+---
+
+### getBulkRecallBatchDownloadUrl / downloadBulkRecallBatch — Download bulk recall results as CSV
+
+Required:
+
+- `batchId`  
+  Example:
+
+```swift
+let downloadUrl = try carsxe.getBulkRecallBatchDownloadUrl("brb_mnablbn7_wvbaqv")
+let csv = try carsxe.downloadBulkRecallBatch("brb_mnablbn7_wvbaqv")
+```
+
+---
+
+### ymmOptions — Populate year, make, model, and variant dropdowns
+
+Optional:
+
+- `dimension` (`years`, `makes`, `models`, `trims`, `variants`)
+- `year`, `make`, `model`, `trim`  
+  Example:
+
+```swift
+let years = try carsxe.ymmOptions([:])
+let makes = try carsxe.ymmOptions(["year": "2026"])
+let models = try carsxe.ymmOptions(["make": "Toyota"])
+let variants = try carsxe.ymmOptions([
+    "year": "2026",
+    "make": "Toyota",
+    "model": "Tacoma"
+])
+```
+
+---
+
+### ownershipVin — Look up registered owner(s) by VIN
+
+Required:
+
+- `vin`  
+  Optional:
+- `include` (`demographics`, `emails`, `phones`, `vehicle_history`)  
+  Example:
+
+```swift
+let owners = try carsxe.ownershipVin(["vin": "1FT8X3BT0BEA61538"])
+```
+
+---
+
+### ownershipPerson — Resolve contact details by name and address
+
+Required:
+
+- `first_name`, `last_name`, `address`, `zip`  
+  Optional:
+- `include`  
+  Example:
+
+```swift
+let person = try carsxe.ownershipPerson([
+    "first_name": "John",
+    "last_name": "Sample",
+    "address": "123 Example St",
+    "zip": "90210"
+])
+```
+
+---
+
+### ownershipAddress — Find residents at a street address
+
+Required:
+
+- `address`, `zip`  
+  Optional:
+- `include`, `variant`  
+  Example:
+
+```swift
+let residents = try carsxe.ownershipAddress([
+    "address": "123 Example St",
+    "zip": "90210"
+])
+```
+
+---
+
+### ownershipZip — Search people in a ZIP code
+
+Required:
+
+- `zip`  
+  Optional:
+- `gender`, `min_age`, `max_age`, `income`, `page`, `limit`, `include`, `variant`  
+  Example:
+
+```swift
+let records = try carsxe.ownershipZip([
+    "zip": "00000",
+    "gender": "f",
+    "min_age": "45"
+])
+```
+
+---
+
+### usPlateDecoder — Decode a US license plate (plate, state)
+
+Required:
+
+- `plate`
+- `state`  
+  Optional:
+- `decodeVIN`  
+  Example:
+
+```swift
+let usPlate = try carsxe.usPlateDecoder([
+    "plate": "H37SFS",
+    "state": "NJ",
+    "decodeVIN": "true"
+])
+```
+
+---
+
 ## Notes & Best Practices
 
 - Parameter requirements: Each endpoint requires specific parameters—see the Required/Optional fields above.

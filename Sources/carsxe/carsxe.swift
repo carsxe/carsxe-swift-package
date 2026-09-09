@@ -122,6 +122,32 @@ public final class CarsXE {
         return try parseJSONObject(from: data)
     }
 
+    /// Synchronously perform a GET request and return the response body as text.
+    private func fetchText(url: URL) throws -> String {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        let (data, response, error) = synchronousDataTask(with: request)
+
+        if let err = error {
+            throw CarsXEError.networkError(err)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw CarsXEError.networkError(NSError(domain: "CarsXE", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
+        }
+
+        guard (200...299).contains(http.statusCode) else {
+            throw CarsXEError.httpError(statusCode: http.statusCode, data: data)
+        }
+
+        guard let data = data else {
+            return ""
+        }
+
+        return String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)
+    }
+
     /// Helper to synchronously run a URLSession dataTask.
     /// Uses reference-type holders to avoid mutating captured local variables in the closure
     /// (fixes Swift 6 "mutation of captured var in concurrently-executing code" diagnostics).
@@ -270,6 +296,105 @@ public final class CarsXE {
     /// Required: vin
     public func lienAndTheft(_ params: [String: String]) throws -> [String: Any] {
         let url = try buildURL(endpoint: "v1/lien-theft", params: params)
+        return try fetch(url: url)
+    }
+
+    /// Get safety recall data by year, make, and model
+    /// Required: year, make, model
+    public func recallsYmm(_ params: [String: String]) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/recalls-ymm", params: params)
+        return try fetch(url: url)
+    }
+
+    /// Submit a bulk recalls batch (POST)
+    /// Required: at least one of vins, csv, csvUrl
+    /// Optional: webhookUrl
+    public func submitBulkRecallBatch(_ body: [String: Any]) throws -> [String: Any] {
+        guard var comps = URLComponents(string: "\(getBaseUrl())/v1/recalls-batch/submit") else {
+            throw CarsXEError.invalidURL
+        }
+        comps.queryItems = [
+            URLQueryItem(name: "key", value: getApiKey()),
+            URLQueryItem(name: "source", value: sourceName)
+        ]
+        guard let url = comps.url else { throw CarsXEError.invalidURL }
+        return try post(url: url, jsonBody: body, headers: ["Content-Type": "application/json"])
+    }
+
+    /// Get bulk recalls batch status
+    /// Required: batchId
+    public func getBulkRecallBatchStatus(_ batchId: String) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/recalls-batch/status", params: ["batchId": batchId])
+        return try fetch(url: url)
+    }
+
+    /// Get bulk recalls batch results
+    /// Required: batchId
+    public func getBulkRecallBatchResults(_ batchId: String) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/recalls-batch/results", params: ["batchId": batchId])
+        return try fetch(url: url)
+    }
+
+    /// Build the CSV download URL for a bulk recalls batch
+    /// Required: batchId
+    public func getBulkRecallBatchDownloadUrl(_ batchId: String) throws -> String {
+        let url = try buildURL(endpoint: "v1/recalls-batch/download", params: ["batchId": batchId])
+        return url.absoluteString
+    }
+
+    /// Download bulk recalls batch results as CSV
+    /// Required: batchId
+    /// Returns `["csv": <csv text>]`
+    public func downloadBulkRecallBatch(_ batchId: String) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/recalls-batch/download", params: ["batchId": batchId])
+        let csv = try fetchText(url: url)
+        return ["csv": csv]
+    }
+
+    /// Get year/make/model/variant option lists for cascading dropdowns
+    /// Optional: dimension, year, make, model, trim
+    public func ymmOptions(_ params: [String: String] = [:]) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/ymm-options", params: params)
+        return try fetch(url: url)
+    }
+
+    /// Get registered owner(s) by VIN
+    /// Required: vin
+    /// Optional: include
+    public func ownershipVin(_ params: [String: String]) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/ownership/vin", params: params)
+        return try fetch(url: url)
+    }
+
+    /// Get contact details by person name and address
+    /// Required: first_name, last_name, address, zip
+    /// Optional: include
+    public func ownershipPerson(_ params: [String: String]) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/ownership/person", params: params)
+        return try fetch(url: url)
+    }
+
+    /// Get residents by street address
+    /// Required: address, zip
+    /// Optional: include, variant
+    public func ownershipAddress(_ params: [String: String]) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/ownership/address", params: params)
+        return try fetch(url: url)
+    }
+
+    /// Search people by ZIP code
+    /// Required: zip
+    /// Optional: gender, min_age, max_age, income, page, limit, include, variant
+    public func ownershipZip(_ params: [String: String]) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/ownership/zip", params: params)
+        return try fetch(url: url)
+    }
+
+    /// Decode a US license plate
+    /// Required: plate, state
+    /// Optional: decodeVIN
+    public func usPlateDecoder(_ params: [String: String]) throws -> [String: Any] {
+        let url = try buildURL(endpoint: "v1/us-platedecoder", params: params)
         return try fetch(url: url)
     }
 }
