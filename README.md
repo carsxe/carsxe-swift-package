@@ -356,7 +356,7 @@ Required:
 
 ```swift
 let downloadUrl = try carsxe.getBulkRecallBatchDownloadUrl("brb_mnablbn7_wvbaqv")
-let csv = try carsxe.downloadBulkRecallBatch("brb_mnablbn7_wvbaqv")
+let csvText = try carsxe.downloadBulkRecallBatch("brb_mnablbn7_wvbaqv")
 ```
 
 ---
@@ -477,7 +477,7 @@ let usPlate = try carsxe.usPlateDecoder([
 ## Notes & Best Practices
 
 - Parameter requirements: Each endpoint requires specific parameters—see the Required/Optional fields above.
-- Return values: All responses from this package are Swift dictionaries ([String: Any]) for easy and flexible access.
+- Return values: JSON endpoints return Swift dictionaries (`[String: Any]`). `getBulkRecallBatchDownloadUrl` returns a URL string, and `downloadBulkRecallBatch` returns CSV text.
 - Error handling: Use do/catch blocks to gracefully handle errors thrown by the API wrapper.
 - Threading & concurrency: Some package builds expose synchronous (blocking) wrappers that use URLSession + semaphores — avoid calling those from the main/UI thread. If the package or your code uses async/await, prefer keeping network calls and immediate processing in the same async context or convert responses to typed Codable/Sendable models before crossing concurrency boundaries.
 - Serialization: If you need to pass results between threads/tasks, consider serializing to Data (JSON) or decoding into Codable types before dispatching.

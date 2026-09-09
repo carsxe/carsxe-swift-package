@@ -335,20 +335,18 @@ public final class CarsXE {
         return try fetch(url: url)
     }
 
-    /// Build the CSV download URL for a bulk recalls batch
+    /// Build the CSV download URL for a bulk recalls batch (includes `key` and `source` query items)
     /// Required: batchId
     public func getBulkRecallBatchDownloadUrl(_ batchId: String) throws -> String {
         let url = try buildURL(endpoint: "v1/recalls-batch/download", params: ["batchId": batchId])
         return url.absoluteString
     }
 
-    /// Download bulk recalls batch results as CSV
+    /// Download bulk recalls batch results as CSV text
     /// Required: batchId
-    /// Returns `["csv": <csv text>]`
-    public func downloadBulkRecallBatch(_ batchId: String) throws -> [String: Any] {
+    public func downloadBulkRecallBatch(_ batchId: String) throws -> String {
         let url = try buildURL(endpoint: "v1/recalls-batch/download", params: ["batchId": batchId])
-        let csv = try fetchText(url: url)
-        return ["csv": csv]
+        return try fetchText(url: url)
     }
 
     /// Get year/make/model/variant option lists for cascading dropdowns

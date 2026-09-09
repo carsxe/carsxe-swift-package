@@ -94,6 +94,7 @@ public struct APIEndpoints {
         required: ["year", "make", "model"]
     )
 
+    /// At least one of vins, csv, or csvUrl is required.
     public static let submitBulkRecallBatch = EndpointParams(
         required: [],
         optional: ["vins", "csv", "csvUrl", "webhookUrl"]
