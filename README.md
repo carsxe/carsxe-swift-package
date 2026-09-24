@@ -95,7 +95,7 @@ Example (POST endpoints that accept an image URL):
 
 ```swift
 do {
-    let plateResult = try await carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
+    let plateResult = try await carsxe.plateImageRecognition(imageUrl: "https://imagedelivery.net/moyiiSImjJPI_EZVxNMBBw/f49aed53-d736-4370-f3f4-97418841c800/public")
     print(plateResult)
 } catch {
     print("Plate image error: \(error)")
@@ -230,7 +230,7 @@ Required:
   Example:
 
 ```swift
-let plateImg = try await carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
+let plateImg = try await carsxe.plateImageRecognition(imageUrl: "https://imagedelivery.net/moyiiSImjJPI_EZVxNMBBw/f49aed53-d736-4370-f3f4-97418841c800/public")
 ```
 
 ---
@@ -243,7 +243,7 @@ Required:
   Example:
 
 ```swift
-let vinocr = try await carsxe.vinOcr(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
+let vinocr = try await carsxe.vinOcr(imageUrl: "https://imagedelivery.net/moyiiSImjJPI_EZVxNMBBw/f49aed53-d736-4370-f3f4-97418841c800/public")
 ```
 
 ---
