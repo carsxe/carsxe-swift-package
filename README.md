@@ -6,9 +6,18 @@
 
 **CarsXE** is a powerful and developer-friendly API that gives you instant access to a wide range of vehicle data. From VIN decoding and market value estimation to vehicle history, images, OBD code explanations, and plate recognition, CarsXE provides everything you need to build automotive applications at scale.
 
-🌐 **Website:** [https://api.carsxe.com](https://api.carsxe.com)  
-📄 **Docs:** [https://api.carsxe.com/docs](https://api.carsxe.com/docs)  
-📦 **All Products:** [https://api.carsxe.com/all-products](https://api.carsxe.com/all-products)
+🌐 **Website:** [https://carsxe.com](https://carsxe.com)  
+📄 **Docs:** [https://docs.carsxe.com](https://docs.carsxe.com)
+
+### Products
+
+- [Vehicle History](https://carsxe.com/vehicle-history)
+- [Vehicle Plate Decoder](https://carsxe.com/vehicle-plate-decoder)
+- [Vehicle Specifications](https://carsxe.com/vehicle-specifications)
+- [International VIN Decoder](https://carsxe.com/international-vin-decoder)
+- [Vehicle Images](https://carsxe.com/vehicle-images)
+- [Vehicle Recalls](https://carsxe.com/vehicle-recalls)
+- [Vehicle Market Value](https://carsxe.com/vehicle-market-value)
 
 To get started with the CarsXE API (Swift package), follow these steps:
 
@@ -86,7 +95,7 @@ Example (POST endpoints that accept an image URL):
 
 ```swift
 do {
-    let plateResult = try await carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
+    let plateResult = try await carsxe.plateImageRecognition(imageUrl: "https://imagedelivery.net/moyiiSImjJPI_EZVxNMBBw/f49aed53-d736-4370-f3f4-97418841c800/public")
     print(plateResult)
 } catch {
     print("Plate image error: \(error)")
@@ -101,7 +110,7 @@ Call these methods from an `async` function, SwiftUI `.task`, or similar async c
 
 The CarsXE Swift package provides the following public methods (`async throws`, returning `[String: Any]` unless noted):
 
-### specs — Decode VIN & get full vehicle specifications
+### specs — Decode VIN & get full vehicle specifications ([Vehicle Specifications](https://carsxe.com/vehicle-specifications))
 
 Required:
 
@@ -118,7 +127,7 @@ let vehicle = try await carsxe.specs(["vin": "WBAFR7C57CC811956"])
 
 ---
 
-### internationalVinDecoder — Decode VIN with worldwide support
+### internationalVinDecoder — Decode VIN with worldwide support ([International VIN Decoder](https://carsxe.com/international-vin-decoder))
 
 Required:
 
@@ -131,7 +140,7 @@ let intvin = try await carsxe.internationalVinDecoder(["vin": "WF0MXXGBWM8R43240
 
 ---
 
-### platedecoder — Decode license plate info (plate, country)
+### platedecoder — Decode license plate info (plate, country) ([Vehicle Plate Decoder](https://carsxe.com/vehicle-plate-decoder))
 
 Required:
 
@@ -149,7 +158,7 @@ let decodedPlate = try await carsxe.platedecoder(["plate": "7XER187", "state": "
 
 ---
 
-### marketValue — Estimate vehicle market value based on VIN
+### marketValue — Estimate vehicle market value based on VIN ([Vehicle Market Value](https://carsxe.com/vehicle-market-value))
 
 Required:
 
@@ -171,7 +180,7 @@ let marketvalue = try await carsxe.marketValue([
 
 ---
 
-### history — Retrieve vehicle history
+### history — Retrieve vehicle history ([Vehicle History](https://carsxe.com/vehicle-history))
 
 Required:
 
@@ -184,7 +193,7 @@ let history = try await carsxe.history(["vin": "WBAFR7C57CC811956"])
 
 ---
 
-### images — Fetch images by make, model, year, trim
+### images — Fetch images by make, model, year, trim ([Vehicle Images](https://carsxe.com/vehicle-images))
 
 Required:
 
@@ -200,7 +209,7 @@ let images = try await carsxe.images(["make": "BMW", "model": "X5", "year": "201
 
 ---
 
-### recalls — Get safety recall data for a VIN
+### recalls — Get safety recall data for a VIN ([Vehicle Recalls](https://carsxe.com/vehicle-recalls))
 
 Required:
 
@@ -213,7 +222,7 @@ let recalls = try await carsxe.recalls(["vin": "1C4JJXR64PW696340"])
 
 ---
 
-### plateImageRecognition — Read & decode plates from images (POST)
+### plateImageRecognition — Read & decode plates from images (POST) ([Vehicle Plate Decoder](https://carsxe.com/vehicle-plate-decoder))
 
 Required:
 
@@ -221,7 +230,7 @@ Required:
   Example:
 
 ```swift
-let plateImg = try await carsxe.plateImageRecognition(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
+let plateImg = try await carsxe.plateImageRecognition(imageUrl: "https://imagedelivery.net/moyiiSImjJPI_EZVxNMBBw/f49aed53-d736-4370-f3f4-97418841c800/public")
 ```
 
 ---
@@ -234,7 +243,7 @@ Required:
   Example:
 
 ```swift
-let vinocr = try await carsxe.vinOcr(imageUrl: "https://api.carsxe.com/img/apis/plate_recognition.JPG")
+let vinocr = try await carsxe.vinOcr(imageUrl: "https://imagedelivery.net/moyiiSImjJPI_EZVxNMBBw/f49aed53-d736-4370-f3f4-97418841c800/public")
 ```
 
 ---
@@ -280,7 +289,7 @@ let lienTheft = try await carsxe.lienAndTheft(["vin": "2C3CDXFG1FH762860"])
 
 ---
 
-### recallsYmm — Get safety recall data by year, make, and model
+### recallsYmm — Get safety recall data by year, make, and model ([Vehicle Recalls](https://carsxe.com/vehicle-recalls))
 
 Required:
 
@@ -297,7 +306,7 @@ let recalls = try await carsxe.recallsYmm([
 
 ---
 
-### submitBulkRecallBatch — Submit VINs for async bulk recall checking (POST)
+### submitBulkRecallBatch — Submit VINs for async bulk recall checking (POST) ([Vehicle Recalls](https://carsxe.com/vehicle-recalls))
 
 Required (at least one):
 
@@ -321,7 +330,7 @@ let submitted = try await carsxe.submitBulkRecallBatch([
 
 ---
 
-### getBulkRecallBatchStatus — Poll a bulk recalls batch
+### getBulkRecallBatchStatus — Poll a bulk recalls batch ([Vehicle Recalls](https://carsxe.com/vehicle-recalls))
 
 Required:
 
@@ -334,7 +343,7 @@ let status = try await carsxe.getBulkRecallBatchStatus("brb_mnablbn7_wvbaqv")
 
 ---
 
-### getBulkRecallBatchResults — Retrieve bulk recall results as JSON
+### getBulkRecallBatchResults — Retrieve bulk recall results as JSON ([Vehicle Recalls](https://carsxe.com/vehicle-recalls))
 
 Required:
 
@@ -347,7 +356,7 @@ let results = try await carsxe.getBulkRecallBatchResults("brb_mnablbn7_wvbaqv")
 
 ---
 
-### getBulkRecallBatchDownloadUrl / downloadBulkRecallBatch — Download bulk recall results as CSV
+### getBulkRecallBatchDownloadUrl / downloadBulkRecallBatch — Download bulk recall results as CSV ([Vehicle Recalls](https://carsxe.com/vehicle-recalls))
 
 Required:
 
@@ -461,7 +470,7 @@ let records = try await carsxe.ownershipZip([
 - Error handling: Use do/catch with `try await` to handle errors from the API wrapper.
 - Concurrency: HTTP methods use Swift concurrency (`URLSession.data(for:)` on Apple platforms). Call them from an async context — they no longer block a thread with a semaphore.
 - Serialization: If you need to pass results between threads/tasks, consider serializing to Data (JSON) or decoding into Codable types before dispatching.
-- More info: For advanced usage and full details, visit the [official API documentation](https://api.carsxe.com/docs).
+- More info: For advanced usage and full details, visit the [official API documentation](https://docs.carsxe.com).
 
 ---
 
